@@ -1,0 +1,5 @@
+[package]
+name = "nickel_mustache"
+version = "0.1.0"
+authors = ["Kevin Butler <haqkrs@gmail.com>"]
+
