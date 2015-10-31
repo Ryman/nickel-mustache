@@ -6,7 +6,7 @@ extern crate mustache;
 extern crate rustc_serialize;
 
 use rustc_serialize::Encodable;
-use mustache::Template;
+use mustache::{Data, Template};
 use nickel::{Response, MiddlewareResult, Halt};
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
@@ -19,6 +19,9 @@ pub trait Render {
     fn render<T, P>(self, path: P, data: &T) -> Self::Output
     where T: Encodable,
           P: AsRef<Path>;
+
+    fn render_data<P>(self, path: P, data: &Data) -> Self::Output
+    where P: AsRef<Path>;
 }
 
 pub trait TemplateSupport {
@@ -79,29 +82,43 @@ where D: TemplateSupport {
 
     fn render<T, P>(self, path: P, data: &T) -> Self::Output
     where T: Encodable,
-          P: AsRef<Path>
-    {
-        let sd = self.server_data();
-        let path = path.as_ref();
-        let render = |template: &Template| {
-            let mut stream = try!(self.start());
-            match template.render(&mut stream, data) {
-                Ok(()) => Ok(Halt(stream)),
-                Err(e) => stream.bail(format!("Problem rendering template: {:?}", e)),
-            }
-        };
+          P: AsRef<Path> {
+        with_template(path.as_ref(),
+                             self.server_data(),
+                             |template| {
+                                 let mut stream = try!(self.start());
+                                 match template.render(&mut stream, data) {
+                                     Ok(()) => Ok(Halt(stream)),
+                                     Err(e) => stream.bail(format!("Problem rendering template: {:?}", e)),
+                                 }
+                             })
+    }
 
-        let compile = |path| {
+    fn render_data<P>(self, path: P, data: &Data) -> Self::Output
+    where P: AsRef<Path> {
+        with_template(path.as_ref(),
+                             self.server_data(),
+                             |template| {
+                                 let mut stream = try!(self.start());
+                                 template.render_data(&mut stream, data);
+                                 Ok(Halt(stream))
+                             })
+    }
+}
+
+fn with_template<F, D, T>(path: &Path, data: &D, f: F) -> T
+where D: TemplateSupport,
+      F: FnOnce(&Template) -> T {
+    let compile = |path| {
             mustache::compile_path(path).unwrap()
             // .map_err(|e| format!("Failed to compile template '{}': {:?}",
             //             path, e))
-        };
+    };
 
-        if let Some(cache) = sd.cache() {
-            return cache.handle(path, render, compile);
-        }
-
-        let template = compile(path);
-        render(&template)
+    if let Some(cache) = data.cache() {
+        return cache.handle(path, f, compile);
     }
+
+    let template = compile(path);
+    f(&template)
 }
