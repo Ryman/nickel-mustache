@@ -1,5 +1,3 @@
-#![allow(unused_variables)]
-
 #[macro_use]
 extern crate nickel;
 extern crate mustache;
@@ -49,7 +47,7 @@ pub trait TemplateCache {
 }
 
 impl TemplateCache for () {
-    fn handle<'a, P, F, R>(&self, path: &'a Path, handle: P, on_miss: F) -> R
+    fn handle<'a, P, F, R>(&self, _: &'a Path, _: P, _: F) -> R
     where P: FnOnce(&Template) -> R,
           F: FnOnce(&'a Path) -> Template
     {
