@@ -8,6 +8,8 @@ extern crate rustc_serialize;
 use rustc_serialize::Encodable;
 use mustache::{Data, Template};
 use nickel::{Response, MiddlewareResult, Halt};
+
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 use std::collections::HashMap;
@@ -26,8 +28,13 @@ pub trait Render {
 
 pub trait TemplateSupport {
     type Cache: TemplateCache;
+
     fn cache(&self) -> Option<&Self::Cache> {
         None
+    }
+
+    fn adjust_path<'a>(&self, path: &'a Path) -> Cow<'a, Path> {
+        Cow::Borrowed(path)
     }
 }
 
@@ -109,6 +116,8 @@ where D: TemplateSupport {
 fn with_template<F, D, T>(path: &Path, data: &D, f: F) -> T
 where D: TemplateSupport,
       F: FnOnce(&Template) -> T {
+    let path = &*data.adjust_path(path);
+
     let compile = |path| {
             mustache::compile_path(path).unwrap()
             // .map_err(|e| format!("Failed to compile template '{}': {:?}",
