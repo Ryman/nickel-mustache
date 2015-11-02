@@ -36,6 +36,8 @@ pub trait TemplateSupport {
 
 pub trait TemplateCache {
     fn handle<'a, P, F, R>(&self, path: &'a Path, handle: P, on_miss: F) -> R
-    where P: FnOnce(&Template) -> R,
-          F: FnOnce(&'a Path) -> Template;
+    where P: FnOnce(Result<&Template, CompileError>) -> R,
+          F: FnOnce(&'a Path) -> Result<Template, CompileError>;
 }
+
+type CompileError = String;

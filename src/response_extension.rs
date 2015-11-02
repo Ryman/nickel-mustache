@@ -1,4 +1,4 @@
-use {TemplateSupport, TemplateCache, Render};
+use {TemplateSupport, TemplateCache, Render, CompileError};
 
 use rustc_serialize::Encodable;
 use mustache::{self, Data, Template};
@@ -14,6 +14,7 @@ where D: TemplateSupport {
     where T: Encodable,
           P: AsRef<Path> {
         with_template(path.as_ref(), self.server_data(), |template| {
+            let template = try_with!(self, template);
             let mut stream = try!(self.start());
             match template.render(&mut stream, data) {
                 Ok(()) => Ok(Halt(stream)),
@@ -25,6 +26,7 @@ where D: TemplateSupport {
     fn render_data<P>(self, path: P, data: &Data) -> Self::Output
     where P: AsRef<Path> {
         with_template(path.as_ref(), self.server_data(), |template| {
+            let template = try_with!(self, template);
             let mut stream = try!(self.start());
             template.render_data(&mut stream, data);
             Ok(Halt(stream))
@@ -34,13 +36,12 @@ where D: TemplateSupport {
 
 fn with_template<F, D, T>(path: &Path, data: &D, f: F) -> T
 where D: TemplateSupport,
-      F: FnOnce(&Template) -> T {
+      F: FnOnce(Result<&Template, CompileError>) -> T {
     let path = &*data.adjust_path(path);
 
-    let compile = |path| {
-        mustache::compile_path(path).unwrap()
-        // .map_err(|e| format!("Failed to compile template '{}': {:?}",
-        //             path, e))
+    let compile = |path: &Path| {
+        mustache::compile_path(path)
+            .map_err(|e| format!("Failed to compile template '{}': {:?}", path.display(), e))
     };
 
     if let Some(cache) = data.cache() {
@@ -48,7 +49,11 @@ where D: TemplateSupport,
     }
 
     let template = compile(path);
-    f(&template)
+
+    match template {
+        Ok(ref template) => f(Ok(template)),
+        Err(e) => f(Err(e)),
+    }
 }
 
 #[cfg(test)]
@@ -58,6 +63,7 @@ mod tests {
     use mustache::{self, Template};
 
     use super::super::*;
+    use CompileError;
 
     struct Foo {
         use_cache: bool,
@@ -101,18 +107,21 @@ mod tests {
 
     impl TemplateCache for FooCacher {
         fn handle<'a, P, F, R>(&self, path: &'a Path, handle: P, on_miss: F) -> R
-        where P: FnOnce(&Template) -> R,
-              F: FnOnce(&'a Path) -> Template {
+        where P: FnOnce(Result<&Template, CompileError>) -> R,
+              F: FnOnce(&'a Path) -> Result<Template, CompileError> {
             let val = self.called.get();
             self.called.set(val + 1);
 
             let template = if self.fake_cache_hit {
                 mustache::compile_str("")
             } else {
-                on_miss(path)
+                match on_miss(path) {
+                    Ok(template) => template,
+                    Err(e) => return handle(Err(e)),
+                }
             };
 
-            handle(&template)
+            handle(Ok(&template))
         }
     }
 
@@ -152,7 +161,9 @@ mod tests {
             data.cache.fake_cache_hit = false;
             // If this doesn't panic, then the `cache_used` test isn't actually doing a
             // valid test.
-            with_template(&path, &data, |_| ());
+            with_template(&path, &data, |result| {
+                result.unwrap();
+            });
         }
 
         #[test]
