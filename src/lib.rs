@@ -195,57 +195,64 @@ mod tests {
         }
     }
 
-    #[test]
-    fn cache_called() {
-        let path = Path::new("examples/assets/my_template");
-        let data = Foo::new();
+    mod cache {
+        use std::path::Path;
 
-        super::with_template(&path, &data, |_| ());
-        assert_eq!(data.cache.called.get(), 1);
-        super::with_template(&path, &data, |_| ());
-        assert_eq!(data.cache.called.get(), 2);
-    }
+        use super::Foo;
+        use super::super::with_template;
 
-    #[test]
-    fn cache_used() {
-        let path = Path::new("fake_file");
-        let mut data = Foo::new();
+        #[test]
+        fn called() {
+            let path = Path::new("examples/assets/my_template");
+            let data = Foo::new();
 
-        data.cache.fake_cache_hit = true;
-        // This would try to compile the fake path if the cache doesn't pretend to hit.
-        super::with_template(&path, &data, |_| ());
-    }
+            with_template(&path, &data, |_| ());
+            assert_eq!(data.cache.called.get(), 1);
+            with_template(&path, &data, |_| ());
+            assert_eq!(data.cache.called.get(), 2);
+        }
 
-    #[test]
-    #[should_panic(expected = "No such file or directory")]
-    fn cache_sanity() {
-        let path = Path::new("fake_file");
-        let mut data = Foo::new();
+        #[test]
+        fn used() {
+            let path = Path::new("fake_file");
+            let mut data = Foo::new();
 
-        data.cache.fake_cache_hit = false;
-        // If this doesn't panic, then the `cache_used` test isn't actually doing a valid test.
-        super::with_template(&path, &data, |_| ());
-    }
+            data.cache.fake_cache_hit = true;
+            // This would try to compile the fake path if the cache doesn't pretend to hit.
+            with_template(&path, &data, |_| ());
+        }
 
-    #[test]
-    fn cache_ignored() {
-        let path = Path::new("examples/assets/my_template");
-        let mut data = Foo::new();
-        data.use_cache = false;
+        #[test]
+        #[should_panic(expected = "No such file or directory")]
+        fn sanity() {
+            let path = Path::new("fake_file");
+            let mut data = Foo::new();
 
-        super::with_template(&path, &data, |_| ());
-        super::with_template(&path, &data, |_| ());
-        super::with_template(&path, &data, |_| ());
-        super::with_template(&path, &data, |_| ());
-        super::with_template(&path, &data, |_| ());
-        super::with_template(&path, &data, |_| ());
-        super::with_template(&path, &data, |_| ());
-        super::with_template(&path, &data, |_| ());
-        super::with_template(&path, &data, |_| ());
-        super::with_template(&path, &data, |_| ());
-        super::with_template(&path, &data, |_| ());
-        super::with_template(&path, &data, |_| ());
+            data.cache.fake_cache_hit = false;
+            // If this doesn't panic, then the `cache_used` test isn't actually doing a valid test.
+            with_template(&path, &data, |_| ());
+        }
 
-        assert_eq!(data.cache.called.get(), 0);
+        #[test]
+        fn ignored_when_none() {
+            let path = Path::new("examples/assets/my_template");
+            let mut data = Foo::new();
+            data.use_cache = false;
+
+            with_template(&path, &data, |_| ());
+            with_template(&path, &data, |_| ());
+            with_template(&path, &data, |_| ());
+            with_template(&path, &data, |_| ());
+            with_template(&path, &data, |_| ());
+            with_template(&path, &data, |_| ());
+            with_template(&path, &data, |_| ());
+            with_template(&path, &data, |_| ());
+            with_template(&path, &data, |_| ());
+            with_template(&path, &data, |_| ());
+            with_template(&path, &data, |_| ());
+            with_template(&path, &data, |_| ());
+
+            assert_eq!(data.cache.called.get(), 0);
+        }
     }
 }
