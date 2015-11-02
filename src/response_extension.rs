@@ -20,6 +20,15 @@ where D: TemplateSupport {
         })
     }
 
+    fn render_with_layout<T, P, L>(self, path: P, layout: L, data: &T) -> Self::Output
+    where T: Encodable,
+          P: AsRef<Path>,
+          L: AsRef<Path> {
+        render_with_layout(self, path.as_ref(), Some(layout.as_ref()), |template, mut stream| {
+            template.render(&mut stream, data)
+        })
+    }
+
     fn render_data<P>(self, path: P, data: &Data) -> Self::Output
     where P: AsRef<Path> {
         render(self, path.as_ref(), |template, mut stream| {
@@ -70,20 +79,66 @@ where D: TemplateSupport + 'mw {
 fn render<'a, T, F>(t: T, path: &Path, f: F) -> T::Result
 where T: RenderSteps<'a>,
       F: FnOnce(&Template, &mut Write) -> Result<(), mustache::Error> {
+    render_with_layout(t, path, None, f)
+}
+
+fn render_with_layout<'a, T, F>(t: T, inner: &Path, layout: Option<&Path>, f: F) -> T::Result
+where T: RenderSteps<'a>,
+      F: FnOnce(&Template, &mut Write) -> Result<(), mustache::Error> {
     let data = t.data();
 
-    let path = &*data.adjust_path(path);
+    let inner = &*data.adjust_path(inner);
 
+    macro_rules! try_t {
+        ($e:expr, $msg:expr) => (
+            try_t!($e.map_err(|e| format!("{}: {:?}", $msg, e)))
+        );
+        ($e:expr) => (
+            match $e {
+                Ok(template) => template,
+                Err(e) => return t.error(e)
+            }
+        )
+    }
+
+    if let Some(layout) = layout {
+        // Render a layout!
+        cached_compile(inner, data, |template| {
+            let template = try_t!(template);
+
+            // render inner template to buffer
+            let mut buf = vec![];
+            try_t!(f(template, &mut buf), "Failed to render layout");
+
+            #[derive(RustcEncodable, Debug)]
+            struct Body {
+                body: String
+            }
+
+            let body = Body {
+                body: try_t!(String::from_utf8(buf), "Template was not valid utf8")
+            };
+
+            // render buffer as body of layout into output stream
+            cached_compile(layout, data, |template| {
+                let template = try_t!(template);
+                t.write(|mut writer| template.render(&mut writer, &body))
+            })
+        })
+    } else {
+        cached_compile(inner, data, |template| {
+            let template = try_t!(template);
+            t.write(|writer| f(template, writer))
+        })
+    }
+}
+
+fn cached_compile<D, F, R>(path: &Path, data: &D, handle: F) -> R
+where D: TemplateSupport,
+      F: FnOnce(Result<&Template, CompileError>) -> R {
     let compile = |path: &Path| {
         mustache::compile_path(path)
             .map_err(|e| format!("Failed to compile template '{}': {:?}", path.display(), e))
-    };
-
-    let handle = |result: Result<&Template, CompileError>| {
-        match result {
-            Ok(template) => t.write(|writer| f(template, writer)),
-            Err(e) => t.error(e)
-        }
     };
 
     if let Some(cache) = data.cache() {

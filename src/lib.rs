@@ -19,6 +19,11 @@ pub trait Render {
     where T: Encodable,
           P: AsRef<Path>;
 
+    fn render_with_layout<T, P, L>(self, path: P, layout: L, data: &T) -> Self::Output
+    where T: Encodable,
+          P: AsRef<Path>,
+          L: AsRef<Path>;
+
     fn render_data<P>(self, path: P, data: &Data) -> Self::Output where P: AsRef<Path>;
 }
 

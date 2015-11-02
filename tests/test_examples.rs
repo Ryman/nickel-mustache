@@ -14,6 +14,16 @@ fn basic_example() {
 }
 
 #[test]
+fn with_layout() {
+    run_example("with_layout", |port| {
+        let url = format!("http://localhost:{}", port);
+        let s = read_url(&url);
+
+        assert_eq!(s, "**Before\nHello World\n\n\nAfter**\n");
+    })
+}
+
+#[test]
 fn caching_example_runs() {
     run_example("caching", |port| {
         let url = format!("http://localhost:{}", port);
