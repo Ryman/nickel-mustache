@@ -4,7 +4,9 @@ use rustc_serialize::Encodable;
 use mustache::{self, Data, Template};
 use nickel::{Response, MiddlewareResult, Halt};
 
+use std::io::Write;
 use std::path::Path;
+use std::fmt::Debug;
 
 impl<'a, 'mw, D> Render for Response<'mw, D>
 where D: TemplateSupport {
@@ -13,30 +15,63 @@ where D: TemplateSupport {
     fn render<T, P>(self, path: P, data: &T) -> Self::Output
     where T: Encodable,
           P: AsRef<Path> {
-        with_template(path.as_ref(), self.server_data(), |template| {
-            let template = try_with!(self, template);
-            let mut stream = try!(self.start());
-            match template.render(&mut stream, data) {
-                Ok(()) => Ok(Halt(stream)),
-                Err(e) => stream.bail(format!("Problem rendering template: {:?}", e)),
-            }
+        render(self, path.as_ref(), |template, mut stream| {
+            template.render(&mut stream, data)
         })
     }
 
     fn render_data<P>(self, path: P, data: &Data) -> Self::Output
     where P: AsRef<Path> {
-        with_template(path.as_ref(), self.server_data(), |template| {
-            let template = try_with!(self, template);
-            let mut stream = try!(self.start());
+        render(self, path.as_ref(), |template, mut stream| {
             template.render_data(&mut stream, data);
-            Ok(Halt(stream))
+            Ok(())
         })
     }
 }
 
-fn with_template<F, D, T>(path: &Path, data: &D, f: F) -> T
-where D: TemplateSupport,
-      F: FnOnce(Result<&Template, CompileError>) -> T {
+trait RenderSteps<'a> : Sized {
+    type Result;
+    type ServerData: TemplateSupport + 'a;
+
+    fn data(&self) -> &'a Self::ServerData;
+
+    fn error(self, CompileError) -> Self::Result;
+
+    fn write<F, E>(self, F) -> Self::Result
+    where F: FnOnce(&mut Write) -> Result<(), E>,
+          E: Debug;
+}
+
+impl<'mw, D> RenderSteps<'mw> for Response<'mw, D>
+where D: TemplateSupport + 'mw {
+    type Result = MiddlewareResult<'mw, D>;
+    type ServerData = D;
+
+    fn data(&self) -> &'mw Self::ServerData {
+        self.server_data()
+    }
+
+    fn error(self, e: CompileError) -> Self::Result {
+        try_with!(self, Err(e))
+    }
+
+    fn write<F, E>(self, f: F) -> Self::Result
+    where F: FnOnce(&mut Write) -> Result<(), E>,
+          E: Debug {
+        let mut stream = try!(self.start());
+
+        match f(&mut stream) {
+            Ok(()) => Ok(Halt(stream)),
+            Err(e) => stream.bail(format!("Problem rendering template: {:?}", e)),
+        }
+    }
+}
+
+fn render<'a, T, F>(t: T, path: &Path, f: F) -> T::Result
+where T: RenderSteps<'a>,
+      F: FnOnce(&Template, &mut Write) -> Result<(), mustache::Error> {
+    let data = t.data();
+
     let path = &*data.adjust_path(path);
 
     let compile = |path: &Path| {
@@ -44,15 +79,22 @@ where D: TemplateSupport,
             .map_err(|e| format!("Failed to compile template '{}': {:?}", path.display(), e))
     };
 
+    let handle = |result: Result<&Template, CompileError>| {
+        match result {
+            Ok(template) => t.write(|writer| f(template, writer)),
+            Err(e) => t.error(e)
+        }
+    };
+
     if let Some(cache) = data.cache() {
-        return cache.handle(path, f, compile);
+        return cache.handle(path, handle, compile);
     }
 
     let template = compile(path);
 
     match template {
-        Ok(ref template) => f(Ok(template)),
-        Err(e) => f(Err(e)),
+        Ok(ref template) => handle(Ok(template)),
+        Err(e) => handle(Err(e)),
     }
 }
 
@@ -60,9 +102,12 @@ where D: TemplateSupport,
 mod tests {
     use std::path::Path;
     use std::cell::Cell;
+    use std::fmt::Debug;
+    use std::io::Write;
     use mustache::{self, Template};
 
     use super::super::*;
+    use super::RenderSteps;
     use CompileError;
 
     struct Foo {
@@ -76,6 +121,27 @@ mod tests {
                 use_cache: true,
                 cache: FooCacher::new(),
             }
+        }
+    }
+
+    impl<'a> RenderSteps<'a> for &'a Foo {
+        type Result = Result<String, CompileError>;
+        type ServerData = Foo;
+
+        fn data(&self) -> &'a Self::ServerData {
+            self
+        }
+
+        fn error(self, e: CompileError) -> Self::Result {
+            Err(e)
+        }
+
+        fn write<F, E>(self, f: F) -> Self::Result
+        where F: FnOnce(&mut Write) -> Result<(), E>,
+              E: Debug {
+            let mut s = vec![];
+            f(&mut s).unwrap();
+            Ok(String::from_utf8(s).unwrap())
         }
     }
 
@@ -126,10 +192,19 @@ mod tests {
     }
 
     mod cache {
+        use mustache::Template;
         use std::path::Path;
 
         use super::Foo;
-        use super::super::with_template;
+        use super::super::render;
+
+        fn with_template<F>(path: &Path, data: &Foo, f: F)
+        where F: FnOnce(&Template) {
+            render(data, path, |template, _| {
+                f(template);
+                Ok(())
+            }).unwrap();
+        }
 
         #[test]
         fn called() {
@@ -161,9 +236,7 @@ mod tests {
             data.cache.fake_cache_hit = false;
             // If this doesn't panic, then the `cache_used` test isn't actually doing a
             // valid test.
-            with_template(&path, &data, |result| {
-                result.unwrap();
-            });
+            render(&data, &path, |_, _| Ok(())).unwrap();
         }
 
         #[test]
