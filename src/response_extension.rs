@@ -130,8 +130,10 @@ where T: RenderSteps<'a>,
                 body: try_t!(String::from_utf8(buf), "Template was not valid utf8")
             };
 
+            let adjusted_layout = &*data.adjust_layout_path(layout.as_ref());
+
             // render buffer as body of layout into output stream
-            cached_compile(layout.as_ref(), data, |template| {
+            cached_compile(adjusted_layout, data, |template| {
                 let template = try_t!(template);
                 t.write(|mut writer| template.render(&mut writer, &body))
             })

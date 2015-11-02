@@ -42,6 +42,10 @@ pub trait TemplateSupport {
         Cow::Borrowed(path)
     }
 
+    fn adjust_layout_path<'a>(&self, path: &'a Path) -> Cow<'a, Path> {
+        Cow::Borrowed(path)
+    }
+
     fn default_layout(&self) -> Option<Cow<Path>> {
         None
     }

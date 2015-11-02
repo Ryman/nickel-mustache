@@ -81,9 +81,18 @@ r#"Hello World
 #[test]
 fn path_adjustment() {
     run_example("path_adjustment", |port| {
-        let url = format!("http://localhost:{}", port);
+        let url = format!("http://localhost:{}/no_layout", port);
         let s = read_url(&url);
         assert_eq!(s, "Hello World\n\n");
+    })
+}
+
+#[test]
+fn path_adjustment_with_layout() {
+    run_example("path_adjustment", |port| {
+        let url = format!("http://localhost:{}/with_layout", port);
+        let s = read_url(&url);
+        assert_eq!(s, "**Before\nHello World\n\n\nAfter**\n");
     })
 }
 
