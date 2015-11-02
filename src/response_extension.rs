@@ -13,26 +13,22 @@ where D: TemplateSupport {
     fn render<T, P>(self, path: P, data: &T) -> Self::Output
     where T: Encodable,
           P: AsRef<Path> {
-        with_template(path.as_ref(),
-                             self.server_data(),
-                             |template| {
-                                 let mut stream = try!(self.start());
-                                 match template.render(&mut stream, data) {
-                                     Ok(()) => Ok(Halt(stream)),
-                                     Err(e) => stream.bail(format!("Problem rendering template: {:?}", e)),
-                                 }
-                             })
+        with_template(path.as_ref(), self.server_data(), |template| {
+            let mut stream = try!(self.start());
+            match template.render(&mut stream, data) {
+                Ok(()) => Ok(Halt(stream)),
+                Err(e) => stream.bail(format!("Problem rendering template: {:?}", e)),
+            }
+        })
     }
 
     fn render_data<P>(self, path: P, data: &Data) -> Self::Output
     where P: AsRef<Path> {
-        with_template(path.as_ref(),
-                             self.server_data(),
-                             |template| {
-                                 let mut stream = try!(self.start());
-                                 template.render_data(&mut stream, data);
-                                 Ok(Halt(stream))
-                             })
+        with_template(path.as_ref(), self.server_data(), |template| {
+            let mut stream = try!(self.start());
+            template.render_data(&mut stream, data);
+            Ok(Halt(stream))
+        })
     }
 }
 
@@ -42,9 +38,9 @@ where D: TemplateSupport,
     let path = &*data.adjust_path(path);
 
     let compile = |path| {
-            mustache::compile_path(path).unwrap()
-            // .map_err(|e| format!("Failed to compile template '{}': {:?}",
-            //             path, e))
+        mustache::compile_path(path).unwrap()
+        // .map_err(|e| format!("Failed to compile template '{}': {:?}",
+        //             path, e))
     };
 
     if let Some(cache) = data.cache() {
@@ -65,14 +61,14 @@ mod tests {
 
     struct Foo {
         use_cache: bool,
-        cache: FooCacher
+        cache: FooCacher,
     }
 
     impl Foo {
         fn new() -> Foo {
             Foo {
                 use_cache: true,
-                cache: FooCacher::new()
+                cache: FooCacher::new(),
             }
         }
     }
@@ -86,7 +82,7 @@ mod tests {
         fn new() -> FooCacher {
             FooCacher {
                 called: Cell::new(0),
-                fake_cache_hit: false
+                fake_cache_hit: false,
             }
         }
     }
@@ -154,7 +150,8 @@ mod tests {
             let mut data = Foo::new();
 
             data.cache.fake_cache_hit = false;
-            // If this doesn't panic, then the `cache_used` test isn't actually doing a valid test.
+            // If this doesn't panic, then the `cache_used` test isn't actually doing a
+            // valid test.
             with_template(&path, &data, |_| ());
         }
 

@@ -14,8 +14,7 @@ impl TemplateSupport for () {
 impl TemplateCache for () {
     fn handle<'a, P, F, R>(&self, _: &'a Path, _: P, _: F) -> R
     where P: FnOnce(&Template) -> R,
-          F: FnOnce(&'a Path) -> Template
-    {
+          F: FnOnce(&'a Path) -> Template {
         unreachable!()
     }
 }
@@ -23,8 +22,7 @@ impl TemplateCache for () {
 impl TemplateCache for RwLock<HashMap<PathBuf, Template>> {
     fn handle<'a, P, F, R>(&self, path: &'a Path, handle: P, on_miss: F) -> R
     where P: FnOnce(&Template) -> R,
-          F: FnOnce(&'a Path) -> Template
-    {
+          F: FnOnce(&'a Path) -> Template {
         // Fast path doesn't need writer lock
         if let Some(t) = self.read().unwrap().get(path) {
             return handle(t);

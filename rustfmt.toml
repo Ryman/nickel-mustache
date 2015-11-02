@@ -1,0 +1,2 @@
+where_indent = "Inherit"
+fn_brace_style = "PreferSameLine"
