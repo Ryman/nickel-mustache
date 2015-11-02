@@ -25,6 +25,10 @@ pub trait Render {
           L: AsRef<Path>;
 
     fn render_data<P>(self, path: P, data: &Data) -> Self::Output where P: AsRef<Path>;
+
+    fn render_data_with_layout<P, L>(self, path: P, layout: L, data: &Data) -> Self::Output
+    where P: AsRef<Path>,
+          L: AsRef<Path>;
 }
 
 pub trait TemplateSupport {

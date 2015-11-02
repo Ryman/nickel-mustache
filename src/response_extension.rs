@@ -36,6 +36,15 @@ where D: TemplateSupport {
             Ok(())
         })
     }
+
+    fn render_data_with_layout<P, L>(self, path: P, layout: L, data: &Data) -> Self::Output
+    where P: AsRef<Path>,
+          L: AsRef<Path> {
+        render_with_layout(self, path.as_ref(), Some(layout.as_ref()), |template, mut stream| {
+            template.render_data(&mut stream, data);
+            Ok(())
+        })
+    }
 }
 
 trait RenderSteps<'a> : Sized {

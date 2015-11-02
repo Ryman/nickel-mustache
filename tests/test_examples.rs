@@ -16,10 +16,21 @@ fn basic_example() {
 #[test]
 fn with_layout() {
     run_example("with_layout", |port| {
-        let url = format!("http://localhost:{}", port);
+        let url = format!("http://localhost:{}/no_helpers", port);
         let s = read_url(&url);
-
+        // FIXME: Should the first trailing newline be stripped from renders?
         assert_eq!(s, "**Before\nHello World\n\n\nAfter**\n");
+    })
+}
+
+#[test]
+fn helpers_with_layout() {
+    run_example("with_layout", |port| {
+        let url = format!("http://localhost:{}/with_helpers", port);
+        let s = read_url(&url);
+        // FIXME: Should the first trailing newline be stripped from renders?
+        assert_eq!(s, "**Before\nHello World\n\n<b>Hello World from a helper \
+                       function</b>\nAfter**\n");
     })
 }
 
