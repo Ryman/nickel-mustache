@@ -88,11 +88,13 @@ where D: TemplateSupport + 'mw {
 fn render<'a, T, F>(t: T, path: &Path, f: F) -> T::Result
 where T: RenderSteps<'a>,
       F: FnOnce(&Template, &mut Write) -> Result<(), mustache::Error> {
-    render_with_layout(t, path, None, f)
+    let default_layout = t.data().default_layout();
+    render_with_layout(t, path, default_layout, f)
 }
 
-fn render_with_layout<'a, T, F>(t: T, inner: &Path, layout: Option<&Path>, f: F) -> T::Result
+fn render_with_layout<'a, T, L, F>(t: T, inner: &Path, layout: Option<L>, f: F) -> T::Result
 where T: RenderSteps<'a>,
+      L: AsRef<Path>,
       F: FnOnce(&Template, &mut Write) -> Result<(), mustache::Error> {
     let data = t.data();
 
@@ -129,7 +131,7 @@ where T: RenderSteps<'a>,
             };
 
             // render buffer as body of layout into output stream
-            cached_compile(layout, data, |template| {
+            cached_compile(layout.as_ref(), data, |template| {
                 let template = try_t!(template);
                 t.write(|mut writer| template.render(&mut writer, &body))
             })

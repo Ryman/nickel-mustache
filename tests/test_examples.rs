@@ -35,6 +35,27 @@ fn helpers_with_layout() {
 }
 
 #[test]
+fn with_default_layout() {
+    run_example("default_layout", |port| {
+        let url = format!("http://localhost:{}/no_helpers", port);
+        let s = read_url(&url);
+        // FIXME: Should the first trailing newline be stripped from renders?
+        assert_eq!(s, "Default layout: Hello World\n\n");
+    })
+}
+
+#[test]
+fn helpers_with_default_layout() {
+    run_example("default_layout", |port| {
+        let url = format!("http://localhost:{}/with_helpers", port);
+        let s = read_url(&url);
+        // FIXME: Should the first trailing newline be stripped from renders?
+        assert_eq!(s, "Default layout: Hello World\n\n<b>Hello World from a helper \
+                       function</b>");
+    })
+}
+
+#[test]
 fn caching_example_runs() {
     run_example("caching", |port| {
         let url = format!("http://localhost:{}", port);
