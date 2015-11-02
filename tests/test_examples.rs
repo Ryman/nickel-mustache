@@ -4,12 +4,22 @@ mod testutil;
 use testutil::{run_example, read_url};
 
 #[test]
-fn example() {
+fn basic_example() {
     run_example("example", |port| {
         let url = format!("http://localhost:{}", port);
         let s = read_url(&url);
 
         assert_eq!(s, "Hello World\n\n");
+    })
+}
+
+#[test]
+fn caching_example_runs() {
+    run_example("caching", |port| {
+        let url = format!("http://localhost:{}", port);
+        let s = read_url(&url);
+
+        assert_eq!(s, "Hello Cache?\n\n");
     })
 }
 
