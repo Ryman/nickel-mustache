@@ -59,3 +59,5 @@ You can then compile this using *Cargo build* and run it using *Cargo run*. Afte
 ## More examples
 
 More examples can be found [in the examples directory](/examples/), please check them out and you are welcome to log an issue if you have any trouble!
+
+Generated documentation can be [found here](http://ryman.github.io/nickel-mustache)

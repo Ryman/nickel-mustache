@@ -6,6 +6,7 @@ description = "Flexible Mustache template rendering for nickel"
 keywords = ["mustache", "nickel", "templates", "web"]
 license = "MIT"
 repository = "https://github.com/Ryman/nickel-mustache"
+documentation = "http://ryman.github.io/nickel-mustache"
 
 [dependencies]
 nickel = "^0.7.1"
