@@ -1,0 +1,30 @@
+language: rust
+sudo: false
+
+cache:
+  directories:
+    - target
+
+rust:
+  - stable
+  - nightly
+  - beta
+
+before_script:
+  - pip install 'travis-cargo<0.2' --user && export PATH=$HOME/.local/bin:$PATH
+
+script:
+  - |
+      travis-cargo build &&
+      travis-cargo test &&
+      travis-cargo doc &&
+      echo "Testing README" &&
+      rustdoc --test Readme.md -L dependency=./target/debug/deps --extern nickel_mustache=./target/debug/libnickel_mustache.rlib --extern nickel=$(ls ./target/debug/deps/libnickel-*.rlib | head -n 1) --extern rustc_serialize=$(ls ./target/debug/deps/librustc_serialize-*.rlib | head -n 1)
+
+after_success:
+  - travis-cargo --only stable doc-upload
+
+env:
+  global: # travis encrypt GH_TOKEN=<..> (different per repository)
+    - secure: UymgRRhZX8ZD6+3e51M8oIVZmNbyR1YpdPy/3PZBGmPqWKAEwH46Mh7rLHRWS/k5S6eICFk/NYJG53wOEKgaNLkUFMzrWIqpxGvf3CfGw79WZR/RMITmt0Gmlsj++WLpMPbPF6B7fT/QFqKnvC2zyWKiqgZGQWgEc9ddWBacZLSLfE3ijSV9/u57+9dhLW/STyVv8r/QjEBk3G6u2PKvvhEk34sbK8JG4lIO/NPNH+GVzWv5i05wi/InEYSih9P3QMokDtyN969kGVFdFYk8hgMl38i+eOMnS1IeNTL6ezCYuojN1nXFHwfLHOGU6tLklZu1CqDW3MBt6l4P5ieX8SZ3rx/Zr+Rc/jCY6n1AY2Qp9pl8J9s/+m/bsfllxPb3lMwd7YWUw+jK6SCoMmikzMShIvsN23X2t+/EXtztiwso7nPv9jYZFZf//Q2o3blRrj0kUFxTFhc2bOkCRWhAXQp8pBxhdGss82//Fnjakt/jmHqzqczWq3NfqgdXNsgqEmm3uZBJH6dYeBUwWjtdVakEtjiyYDR5bsTZMd3kO2jcvbU26ARrVbPP2RHonb3ErP+rRi2SKLLs1lXfltJ76G5xE5KW6EBCWBQkdTCl9g1yAP0oh8EBMJINb7C8yaM4NFGTHU5LauJ+/9fY80wc4f4+KGfMN930CtwEFOfAiyM=
+    - TRAVIS_CARGO_NIGHTLY_FEATURE=""
