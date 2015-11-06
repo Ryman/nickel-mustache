@@ -2,9 +2,13 @@
 name = "nickel_mustache"
 version = "0.1.0"
 authors = ["Kevin Butler <haqkrs@gmail.com>"]
+description = "Flexible Mustache template rendering for nickel"
+keywords = ["mustache", "nickel", "templates", "web"]
+license = "MIT"
+repository = "https://github.com/Ryman/nickel-mustache"
 
 [dependencies]
-nickel = "0.7"
+nickel = "^0.7.1"
 mustache = "0.6"
 rustc-serialize = "0.3"
 
