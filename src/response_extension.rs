@@ -176,7 +176,6 @@ mod tests {
 
     use super::super::*;
     use super::RenderSteps;
-    use CompileError;
 
     struct Foo {
         use_cache: bool,
