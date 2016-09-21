@@ -9,7 +9,7 @@ repository = "https://github.com/Ryman/nickel-mustache"
 documentation = "http://ryman.github.io/nickel-mustache"
 
 [dependencies]
-nickel = "^0.7.1"
+nickel = "^0.8.1"
 mustache = "0.6"
 rustc-serialize = "0.3"
 
